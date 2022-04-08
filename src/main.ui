@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>928</width>
+    <height>592</height>
+   </rect>
+  </property>
+  <property name="sizePolicy">
+   <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+    <horstretch>0</horstretch>
+    <verstretch>0</verstretch>
+   </sizepolicy>
+  </property>
+  <property name="windowTitle">
+   <string>A really terrible IDE</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <widget class="QPushButton" name="saveButton">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>10</y>
+      <width>80</width>
+      <height>26</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Save</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="loadButton">
+    <property name="geometry">
+     <rect>
+      <x>100</x>
+      <y>10</y>
+      <width>80</width>
+      <height>26</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Load</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="runButton">
+    <property name="geometry">
+     <rect>
+      <x>750</x>
+      <y>10</y>
+      <width>80</width>
+      <height>26</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Run</string>
+    </property>
+   </widget>
+   <widget class="QPlainTextEdit" name="inputEdit">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>40</y>
+      <width>401</width>
+      <height>501</height>
+     </rect>
+    </property>
+    <property name="sizePolicy">
+     <sizepolicy hsizetype="Fixed" vsizetype="Expanding">
+      <horstretch>0</horstretch>
+      <verstretch>0</verstretch>
+     </sizepolicy>
+    </property>
+    <property name="plainText">
+     <string>; The code below only works for devices based on
+; the CXD2680 chip running FW 1.600
+mov r0, 0x0
+ldr r1, control
+strb r0, [r1]
+
+mov r0, 0x07
+ldr r1, displayState
+strb r0, [r1]
+
+adr r0, localContents
+ldr r1, systemBuffer
+mov r2, 7
+loop:
+	ldrb r3, [r0]
+	strb r3, [r1]
+	add r0, r0, #1
+	add r1, r1, #1
+	subs r2, r2, #1
+	bne loop
+bx lr
+
+displayState: .word 0x02000674
+systemBuffer: .word 0x020007c8
+control: .word 0x0200056c
+
+localContents: .ascii &quot;Hello!\0&quot;</string>
+    </property>
+   </widget>
+   <widget class="QPlainTextEdit" name="programOutput">
+    <property name="geometry">
+     <rect>
+      <x>420</x>
+      <y>40</y>
+      <width>501</width>
+      <height>501</height>
+     </rect>
+    </property>
+    <property name="readOnly">
+     <bool>true</bool>
+    </property>
+    <property name="plainText">
+     <string>Asivery's Terrible NetMD IDE
+
+Before running any code, make sure your player is soft / hard patched.
+To soft patch a player, please click the 'Soft Patch' button.
+An unpatched device won't be able to run any code.
+
+Shortcuts:
+Assemble: Ctrl + Return
+Run: Ctrl + Shift + Return
+
+</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="saveLogsButton">
+    <property name="geometry">
+     <rect>
+      <x>840</x>
+      <y>10</y>
+      <width>80</width>
+      <height>26</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Save Logs</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="justCompileButton">
+    <property name="geometry">
+     <rect>
+      <x>660</x>
+      <y>10</y>
+      <width>80</width>
+      <height>26</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Just Compile</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="softPatchButton">
+    <property name="geometry">
+     <rect>
+      <x>570</x>
+      <y>10</y>
+      <width>80</width>
+      <height>26</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Soft Patch</string>
+    </property>
+   </widget>
+   <widget class="QCheckBox" name="useThumbCheckBox">
+    <property name="geometry">
+     <rect>
+      <x>454</x>
+      <y>10</y>
+      <width>101</width>
+      <height>24</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Use THUMB</string>
+    </property>
+   </widget>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>928</width>
+     <height>23</height>
+    </rect>
+   </property>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
