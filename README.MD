@@ -28,7 +28,7 @@ The text field on the right contains logs, and info about data sent and received
 
 ## Example code
 
-A `Hello!` (World) program. It display 'Hello!' on the device's internal display
+A `Hello!` (World) program. It displays 'Hello!' on the device's internal display
 
 ```armasm
 ; The code below only works for devices based on

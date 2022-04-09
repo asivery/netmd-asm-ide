@@ -17,6 +17,7 @@ class KnownPatch:
 KNOWN_PATCHES = [
     KnownPatch("USB Buffer Code Execution CXD2680 V1.600 - part 1", SoftPatch(0x0000e69c, 0x08480047)),
     KnownPatch("USB Buffer Code Execution CXD2680 V1.600 - part 2", SoftPatch(0x0000e6c0, 0x74110002)),
+    KnownPatch("USB Buffer Code Execution CXD2680 V1.600 - COMBO", SoftPatch(0x0000e69c, 0x13480047)),
     KnownPatch("Say 'NOPE' instead of 'HOLD' CXD2680 V1.600", SoftPatch(0x000863b9, 0x4e4f5045)),
     KnownPatch("Say 'WrP' instead of 'SAVED' CXD2680 V1.600", SoftPatch(0x00086450, 0x57725000)),
 ]
