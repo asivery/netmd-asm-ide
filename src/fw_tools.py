@@ -1,10 +1,18 @@
+from io import StringIO
 import usb1
 import libusb1
 import struct
+from time import sleep
 
 MEM_TYPE_MAPPED     = 0
 MEM_TYPE_EEPROM_32K = 2
 MEM_TYPE_EEPROM_16K = 3
+
+ACTION_PLAY = 0x75
+ACTION_PAUSE = 0x7d
+ACTION_FASTFORWARD = 0x39
+ACTION_REWIND = 0x49
+
 
 int_to_four_bytes = struct.Struct('<I').pack
 
@@ -92,6 +100,11 @@ def write(md_iface, addr, mem_type, data):
     md_iface.sendCommand2([0x18,0x20,0xff,mem_type,b4,b3,b2,b1,length,0x00,0x00])
     md_iface.readReply2()
 
+def writeAbstractLength(md_iface, addr, mem_type, data):
+    for offset in range(0, len(data), 0x10):
+        end = min(offset + 0x10, len(data))
+        write(md_iface, addr + offset, mem_type, data[offset:end])
+
 def patch(md_iface, addr, val, patch_nr = 7):
     y1, y2, y3, y4 = int_to_four_bytes(addr & 0xFFFFFFFF)
     b4, b3, b2, b1 = ord(y1), ord(y2), ord(y3), ord(y4)
@@ -131,8 +144,9 @@ def patch(md_iface, addr, val, patch_nr = 7):
     write(md_iface, control, MEM_TYPE_MAPPED, [9])
 
 def execute(md, code):
-    md.sendCommand(md.formatQuery("18d2ff %*", code))
-    return md.net_md.readReply()
+    query = md.formatQuery("18d2ff %*", code)
+    md.sendCommand(query)
+    return md.net_md.readReply(len(query) + 1)
 
 KNOWN_USB_ID_SET = frozenset([
     (0x04dd, 0x7202), # Sharp IM-MT899H
@@ -186,6 +200,26 @@ STATUS_IN_TRANSITION = 0x0b
 STATUS_IMPLEMENTED = 0x0c
 STATUS_CHANGED = 0x0d
 STATUS_INTERIM = 0x0f
+
+def int2BCD(value, length=1):
+    """
+      Convert an int into a BCD number.
+      value (int)
+        Integer value.
+      length (int)
+        Length limit for output number, in bytes.
+      Returns the same value in BCD.
+    """
+    if value > ((10 ** (length * 2)) - 1):
+        raise ValueError('Value %r cannot fit in %i bytes in BCD' %
+             (value, length))
+    bcd = 0
+    nibble = 0
+    while value:
+        value, nibble_value = divmod(value, 10)
+        bcd |= nibble_value << (4 * nibble)
+        nibble += 1
+    return bcd
 
 
 def iterdevices(usb_context, bus=None, device_address=None):
@@ -266,35 +300,42 @@ class NetMD(object):
           command (str)
             Binary command to send.
         """
+        print(">>>SEND D:  " + ''.join(('0' if x<0x10 else '') + hex(x)[2:] for x in command[1:]))
         #print '%04i> %s' % (len(command), dump(command))
         self.usb_handle.controlWrite(libusb1.LIBUSB_TYPE_VENDOR | \
                                      libusb1.LIBUSB_RECIPIENT_INTERFACE,
                                      0xff, 0, 0, command) #0x80, 0, 0, command
 
-    def readReply(self):
+    def readReply(self, forcedLength=-1):
         """
           Get a raw binary reply from device.
           Returns the reply.
         """
-        reply_length = 0
-        while reply_length == 0:
-            reply_length = self._getReplyLength()
-            if reply_length == 0: sleep(0.1)
+        if forcedLength == -1:
+            reply_length = 0
+            while reply_length == 0:
+                reply_length = self._getReplyLength()
+                if reply_length == 0: sleep(0.1)
+        else: reply_length = forcedLength
+        
         reply = self.usb_handle.controlRead(libusb1.LIBUSB_TYPE_VENDOR | \
                                             libusb1.LIBUSB_RECIPIENT_INTERFACE,
                                             0x81, 0, 0, reply_length) #0x81
         #print '%04i< %s' % (len(reply), dump(reply))
         return reply
 
-    def readReply2(self):
+    def readReply2(self, forcedLength=-1):
         """
           Get a raw binary reply from device.
           Returns the reply.
         """
-        reply_length = 0
-        while reply_length == 0:
-            reply_length = self._getReplyLength()
-            if reply_length == 0: sleep(0.1)
+        if forcedLength == -1:
+            reply_length = 0
+            while reply_length == 0:
+                reply_length = self._getReplyLength()
+                if reply_length == 0: sleep(0.1)
+        else: reply_length = forcedLength
+
         reply = self.usb_handle.controlRead(libusb1.LIBUSB_TYPE_VENDOR | \
                                             libusb1.LIBUSB_RECIPIENT_INTERFACE,
                                             0xff, 0, 0, reply_length) #0x81
@@ -356,6 +397,18 @@ class NetMDInterface(object):
         """
         self.net_md = net_md
 
+    def gotoTime(self, track, hour=0, minute=0, second=0, frame=0):
+        """
+          Seek to given time of given track.
+        """
+        query = self.formatQuery('1850 ff000000 0000 %w %b%b%b%b', track,
+                                 int2BCD(hour), int2BCD(minute),
+                                 int2BCD(second), int2BCD(frame))
+        reply = self.sendCommand(query)
+        #return self.scanQuery(reply, '1850 00000000 %?%? %w %b%b%b%b')
+
+
+
     def send_query(self, query, test=False):
         # XXX: to be removed (replaced by 2 separate calls)
         self.sendCommand(query, test=test)
@@ -390,7 +443,7 @@ class NetMDInterface(object):
         return result[1:]
 
     def formatQuery(self, format, *args):
-        print("Send>>>" + format)
+        #print("Send>>>" + format)
         ord_ = lambda x: x if type(x) is int else ord(x)
         result = []
         append = result.append
@@ -405,7 +458,7 @@ class NetMDInterface(object):
                 escaped = False
                 value = arg_stack.pop(0)
                 if char in _FORMAT_TYPE_LEN_DICT:
-                    for byte in xrange(_FORMAT_TYPE_LEN_DICT[char] - 1, -1, -1):
+                    for byte in range(_FORMAT_TYPE_LEN_DICT[char] - 1, -1, -1):
                         append((value >> (byte * 8)) & 0xff)
                 # String ('s' is 0-terminated, 'x' is not)
                 elif char in ('s', 'x'):
@@ -436,6 +489,44 @@ class NetMDInterface(object):
         assert len(arg_stack) == 0
         return result
 
+    def _play(self, action):
+        query = self.formatQuery('18c3 ff %b 000000', action)
+        reply = self.send_query(query)
+        self.scanQuery(reply, '18c3 00 %b 000000')
+
+    def play(self):
+        """
+          Start playback on device.
+        """
+        self._play(ACTION_PLAY)
+
+    def fast_forward(self):
+        """
+          Fast-forward device.
+        """
+        self._play(ACTION_FASTFORWARD)
+
+    def rewind(self):
+        """
+          Rewind device.
+        """
+        self._play(ACTION_REWIND)
+
+    def pause(self):
+        """
+          Pause device.
+        """
+        self._play(ACTION_PAUSE)
+
+    def stop(self):
+        """
+          Stop playback on device.
+        """
+        query = self.formatQuery('18c5 ff 00000000')
+        reply = self.send_query(query)
+        self.scanQuery(reply, '18c5 00 00000000')
+
+
     def scanQuery(self, query, format):
         result = []
         append = result.append
@@ -462,7 +553,7 @@ class NetMDInterface(object):
                     continue
                 if char in _FORMAT_TYPE_LEN_DICT:
                     value = 0
-                    for byte in xrange(_FORMAT_TYPE_LEN_DICT[char] - 1, -1, -1):
+                    for byte in range(_FORMAT_TYPE_LEN_DICT[char] - 1, -1, -1):
                         value |= (pop() << (byte * 8))
                     append(value)
                 # String ('s' is 0-terminated, 'x' is not)

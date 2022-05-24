@@ -1,4 +1,5 @@
 from PyQt5 import QtWidgets
+import traceback
 
 def warn(str):
     QtWidgets.QMessageBox(text=str).exec()
@@ -11,4 +12,4 @@ def pad(str, length, char):
     return str if strlen >= length else ((char * (length - strlen)) + str)
 
 def messageOrPredef(ex, predefined):
-    return ex.message if hasattr(ex, 'message') else predefined
+    return ex.message if hasattr(ex, 'message') else f"{predefined} ({type(ex).__name__})"

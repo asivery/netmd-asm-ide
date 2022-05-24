@@ -62,8 +62,8 @@ class AsmMainWindow(QtWidgets.QMainWindow):
         SoftPatchWindow(lambda msg: self._log(msg))
 
     def _compile(self):
-        program = self.inputEdit.toPlainText()
-        program = '\n'.join(x if ';' not in x else x[:x.find(';')] for x in program.split("\n"))
+        rawinput = self.inputEdit.toPlainText()
+        program = '\n'.join(x if ';' not in x else x[:x.find(';')] for x in rawinput.split("\n"))
         engine = Ks(KS_ARCH_ARM, KS_MODE_ARM if not self.useThumbCheckBox.isChecked() else KS_MODE_THUMB)
         try:
             assembled, length = engine.asm(program)
@@ -78,23 +78,76 @@ class AsmMainWindow(QtWidgets.QMainWindow):
         return assembled, length
 
     def _runAction(self):
-        assembled, length = self._compile()
+        commandLines = [x.strip()[2:] for x in self.inputEdit.toPlainText().split("\n") if x.strip().startswith(";@")]
+        justTransfer = False
+        highRamAddress = 0x02006000
+        hexContent = None
+        for line in commandLines:
+            tokens = line.split(" ")
+            if tokens[0] == "HIRAM":
+                highRamAddress = int(tokens[1], 16)
+            elif tokens[0] == "RAW":
+                hexContent = [int(tokens[1][i:i+2], 16) for i in range(0, len(tokens[1]), 2)]
+            elif tokens[0] == "LOADONLY":
+                justTransfer = True
+            else:
+                self._log(f"Invalid parser command: {tokens[0]}")
+                return
+
+        if not hexContent:
+            assembled, length = self._compile()
+        else:
+            assembled, length = hexContent, len(hexContent)
+            self._log("Sending just the raw data. No code was assembled")
+            self._log(f"Data to send is {hexify(assembled)}")
+
         if not assembled:
             self._log("Invalid assembly code. Nothing has been sent to device")
             return
 
         self._log()
         self._log("Sending to device...")
-        try:
-            device = fw_tl.connect()
-            response = fw_tl.execute(device, assembled)[4:]
-            self._log(f"USB Buffer is {len(response)} bytes long")
-            self._log(f"Raw data: ")
-            self._log(hexify(response))
-            self._log()
-            device.net_md.__del__()
-        except BaseException as e:
-            self._log("Error: " + messageOrPredef(e, "Cannot connect to device!")) 
+        if justTransfer:
+            self._log(f"Instructed to just transfer the data to RAM, and not run it. Copying code to {hex(highRamAddress)}")
+            try:
+                device = fw_tl.connect()
+                fw_tl.prep_auth(device)
+                fw_tl.writeAbstractLength(device, highRamAddress, fw_tl.MEM_TYPE_MAPPED, assembled)
+                device.net_md.__del__()
+                self._log("Transfer completed successfully")
+            except BaseException as e:
+                self._log("Error: " + messageOrPredef(e, "Cannot connect to device!")) 
+        else:
+            if len(assembled) > 500:
+                self._log("As the code is larger than 500 bytes, it will be written to high RAM first. This will make it impossible to read out the response from the response USB buffer.")
+                self._log(f"High RAM is defined as {highRamAddress}")
+                try:
+                    device = fw_tl.connect()
+                    fw_tl.prep_auth(device)
+                    fw_tl.writeAbstractLength(device, highRamAddress, fw_tl.MEM_TYPE_MAPPED, assembled)
+                    self._log("Code transferred successfully. Executing jump code")
+                    engine = Ks(KS_ARCH_ARM, KS_MODE_ARM)
+                    asm, _ = engine.asm(f"""
+ldr r0, highRAM
+bx r0
+highRAM:
+    .word {highRamAddress}
+                    """)
+                    fw_tl.execute(device, asm)
+                    device.net_md.__del__()
+                except BaseException as e:
+                    self._log("Error: " + messageOrPredef(e, "Cannot connect to device!")) 
+                return
+            try:
+                device = fw_tl.connect()
+                response = fw_tl.execute(device, assembled)[4:]
+                self._log(f"USB Buffer is {len(response)} bytes long")
+                self._log(f"Raw data: ")
+                self._log(hexify(response))
+                self._log()
+                device.net_md.__del__()
+            except BaseException as e:
+                self._log("Error: " + messageOrPredef(e, "Cannot connect to device!")) 
 
 
     

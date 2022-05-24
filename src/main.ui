@@ -127,6 +127,13 @@ Shortcuts:
 Assemble: Ctrl + Return
 Run: Ctrl + Shift + Return
 
+Parser commands:
+;@RAW [hex data] - Sends hex-encoded data instead of compiling code
+;@HIRAM [address] - Sets the high memory address - this address will
+be used when the code length surpasses 500 bytes, or when the ;@LOADONLY
+parser command is used (Default is 02006000)
+;@LOADONLY - Only copies the code into HIRAM, and doesn't execute it.
+
 </string>
     </property>
    </widget>
