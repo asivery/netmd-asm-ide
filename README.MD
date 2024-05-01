@@ -60,6 +60,34 @@ control: .word 0x0200056c
 localContents: .ascii "Hello!\0"
 ```
 
+... or the same program written using _stdcall macros
+
+```
+; The code below only works for devices based on
+; the CXD2680 chip running FW 1.600
+
+$memcpy 0x0007cb19
+$systemLCDBuffer 0x020007c8
+
+push { lr }
+
+mov r0, 0x0
+ldr r1, control
+strb r0, [r1]
+
+mov r0, 0x07
+ldr r1, displayState
+strb r0, [r1]
+
+?memcpy(*systemLCDBuffer, *&"Hello!\0\0"@ascii, 7);
+
+pop { r0 }
+bx r0
+
+displayState: .word 0x02000674
+control: .word 0x0200056c
+```
+
 ## Contributions
 Every contribution is welcome, if you'd like to improve something, please open a pull request!
 

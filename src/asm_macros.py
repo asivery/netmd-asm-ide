@@ -92,6 +92,10 @@ def process(input_lines: list[str]) -> list[str]:
             args_str = a.group(2)
 
             for i, x in enumerate(split_ignore_delim_in_quotes(args_str, ',')):
+                register = f'r{i}'
+                if i > 3:
+                    # Pass using stack
+                    register = temporary_register
                 x = x.strip()
                 if x == '!': continue # don't touch register
                 elif x.startswith("*"): # load via an LDR
@@ -106,12 +110,14 @@ def process(input_lines: list[str]) -> list[str]:
                         x = x[:x.rfind("@")]
                     temp_name = random_string("arg", 12)
                     delegated_lines.append(f"{temp_name}: .{v_type} {x}")
-                    output_lines.append(f"{'adr' if load_adr else 'ldr'} r{i}, {temp_name}")
+                    output_lines.append(f"{'adr' if load_adr else 'ldr'} {register}, {temp_name}")
                 elif x.startswith("&"): # load via an ADR
-                    output_lines.append(f"adr r{i}, {x[1:]}")
+                    output_lines.append(f"adr {register}, {x[1:]}")
                 else:
-                    output_lines.append(f"mov r{i}, {x}")
-            
+                    output_lines.append(f"mov {register}, {x}")
+                if i > 3:
+                    # move onto stack
+                    output_lines.append(f"mov {register}, [sp, #{(i - 4) * 4}]")
             address_name = random_string("fptr", 10)
             delegated_lines.append(f"{address_name}: .word {func_addr}")
             output_lines.append(f"ldr {temporary_register}, {address_name}")
