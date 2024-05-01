@@ -117,7 +117,7 @@ def process(input_lines: list[str]) -> list[str]:
                     output_lines.append(f"mov {register}, {x}")
                 if i > 3:
                     # move onto stack
-                    output_lines.append(f"mov {register}, [sp, #{(i - 4) * 4}]")
+                    output_lines.append(f"str {register}, [sp, #{(i - 4) * 4}]")
             address_name = random_string("fptr", 10)
             delegated_lines.append(f".align 4 {address_name}: .word {func_addr}")
             output_lines.append(f"ldr {temporary_register}, {address_name}")
