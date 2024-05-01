@@ -109,7 +109,7 @@ def process(input_lines: list[str]) -> list[str]:
                         v_type = x[x.rfind("@")+1:].strip()
                         x = x[:x.rfind("@")]
                     temp_name = random_string("arg", 12)
-                    delegated_lines.append(f"{temp_name}: .{v_type} {x}")
+                    delegated_lines.append(f".align 4 {temp_name}: .{v_type} {x}")
                     output_lines.append(f"{'adr' if load_adr else 'ldr'} {register}, {temp_name}")
                 elif x.startswith("&"): # load via an ADR
                     output_lines.append(f"adr {register}, {x[1:]}")
@@ -119,7 +119,7 @@ def process(input_lines: list[str]) -> list[str]:
                     # move onto stack
                     output_lines.append(f"mov {register}, [sp, #{(i - 4) * 4}]")
             address_name = random_string("fptr", 10)
-            delegated_lines.append(f"{address_name}: .word {func_addr}")
+            delegated_lines.append(f".align 4 {address_name}: .word {func_addr}")
             output_lines.append(f"ldr {temporary_register}, {address_name}")
             return_label_name = random_string("fret", 10)
             output_lines.append(f"adr lr, {return_label_name}")
