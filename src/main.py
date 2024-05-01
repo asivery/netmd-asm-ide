@@ -7,7 +7,7 @@ import signal
 import fw_tools as fw_tl
 from util import *
 from soft_patcher import SoftPatchWindow
-
+from asm_macros import process as process_macros
 
 class AsmMainWindow(QtWidgets.QMainWindow):
     def __init__(self):
@@ -63,7 +63,7 @@ class AsmMainWindow(QtWidgets.QMainWindow):
 
     def _compile(self):
         rawinput = self.inputEdit.toPlainText()
-        program = '\n'.join(x if ';' not in x else x[:x.find(';')] for x in rawinput.split("\n"))
+        program = '\n'.join(process_macros(rawinput.split("\n")))
         engine = Ks(KS_ARCH_ARM, KS_MODE_ARM if not self.useThumbCheckBox.isChecked() else KS_MODE_THUMB)
         try:
             assembled, length = engine.asm(program)

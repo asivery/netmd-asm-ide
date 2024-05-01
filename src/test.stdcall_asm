@@ -1,0 +1,8 @@
+$hello goodbye
+hello world!
+~hello
+hello world!
+
+$function_name 0x00ff00aa
+?function_name(!, *0x12345678, &buffer, *"Hello, World!"@ascii)
+
