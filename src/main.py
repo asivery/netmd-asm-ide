@@ -67,7 +67,7 @@ class AsmMainWindow(QtWidgets.QMainWindow):
         engine = Ks(KS_ARCH_ARM, KS_MODE_ARM if not self.useThumbCheckBox.isChecked() else KS_MODE_THUMB)
         try:
             assembled, length = engine.asm(program)
-        except Exception as e:
+        except BaseException as e:
             self._log(e.message)
             return
         
